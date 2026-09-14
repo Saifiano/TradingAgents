@@ -1,0 +1,68 @@
+name: Smart Trading Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "Yahoo Finance ticker (BTC-USD, ETH-USD, SOL-USD, XRP-USD)"
+        required: true
+        default: "SOL-USD"
+        type: string
+      analysis_date:
+        description: "Analysis date (YYYY-MM-DD)"
+        required: true
+        type: string
+      provider:
+        description: "LLM provider"
+        required: true
+        default: "openai"
+        type: choice
+        options:
+          - openai
+          - anthropic
+          - google
+          - deepseek
+          - openrouter
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install TradingAgents
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+      - name: Run multi-agent analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          TRADINGAGENTS_LLM_PROVIDER: ${{ inputs.provider }}
+          TRADINGAGENTS_OUTPUT_LANGUAGE: Arabic
+          TRADINGAGENTS_MAX_DEBATE_ROUNDS: "1"
+          TRADINGAGENTS_MAX_RISK_ROUNDS: "1"
+          TRADINGAGENTS_TEMPERATURE: "0.0"
+        run: |
+          python scripts/smart_analysis.py \
+            --ticker "${{ inputs.ticker }}" \
+            --date "${{ inputs.analysis_date }}"
+      - name: Upload analysis report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-analysis-${{ inputs.ticker }}-${{ inputs.analysis_date }}
+          path: results/smart-analysis/
+          if-no-files-found: warn
+          retention-days: 30
