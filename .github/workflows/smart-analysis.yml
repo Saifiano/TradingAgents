@@ -24,18 +24,11 @@ on:
           - google
           - deepseek
           - openrouter
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/smart-analysis.yml"
-
 permissions:
   contents: read
 
 jobs:
   analyze:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-btc-report]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
