@@ -6,11 +6,12 @@ on:
       ticker:
         description: "Yahoo Finance ticker (BTC-USD, ETH-USD, SOL-USD, XRP-USD)"
         required: true
-        default: "SOL-USD"
+        default: "BTC-USD"
         type: string
       analysis_date:
         description: "Analysis date (YYYY-MM-DD)"
         required: true
+        default: "2026-09-15"
         type: string
       provider:
         description: "LLM provider"
@@ -23,12 +24,18 @@ on:
           - google
           - deepseek
           - openrouter
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/smart-analysis.yml"
 
 permissions:
   contents: read
 
 jobs:
   analyze:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-btc-report]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -49,20 +56,20 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
-          TRADINGAGENTS_LLM_PROVIDER: ${{ inputs.provider }}
+          TRADINGAGENTS_LLM_PROVIDER: ${{ github.event.inputs.provider || 'openai' }}
           TRADINGAGENTS_OUTPUT_LANGUAGE: Arabic
           TRADINGAGENTS_MAX_DEBATE_ROUNDS: "1"
           TRADINGAGENTS_MAX_RISK_ROUNDS: "1"
           TRADINGAGENTS_TEMPERATURE: "0.0"
         run: |
           python scripts/smart_analysis.py \
-            --ticker "${{ inputs.ticker }}" \
-            --date "${{ inputs.analysis_date }}"
+            --ticker "${{ github.event.inputs.ticker || 'BTC-USD' }}" \
+            --date "${{ github.event.inputs.analysis_date || '2026-09-15' }}"
       - name: Upload analysis report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smart-analysis-${{ inputs.ticker }}-${{ inputs.analysis_date }}
+          name: smart-analysis-${{ github.event.inputs.ticker || 'BTC-USD' }}-${{ github.event.inputs.analysis_date || '2026-09-15' }}
           path: results/smart-analysis/
           if-no-files-found: warn
           retention-days: 30
